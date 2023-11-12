@@ -1,5 +1,6 @@
 package searchengine.services;
 
+import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -35,7 +36,17 @@ public class Page {
         Collection<Page> children = new ArrayList<>();
 
         try {
-        Document doc = Jsoup.connect(siteParent.getUrl() + link).userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6").referrer("http://www.google.com").get();
+            Connection.Response response = Jsoup.connect(siteParent.getUrl() + link).followRedirects(false).execute();
+            int code = response.statusCode();
+            System.out.println("StatusCode = " + code);
+            Connection connection = Jsoup.connect(siteParent.getUrl() + link).userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6").referrer("http://www.google.com");
+      //  Connection.Response response = connection.followRedirects(false).execute();
+
+
+        if(response.statusCode() >= 400) {
+            return children;
+        }
+        Document doc = connection.get();
 
         Elements links = doc.select("a[href]");
 

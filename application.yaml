@@ -1,10 +1,10 @@
 
 indexing-settings:
   sites:
-    - url: https://www.svetlovka.ru
+    - url: https://www.svetlovka.ru/
       name: svetlovka
-    - url: https://dombulgakova.ru
-      name: dombulgakova
+    - url: http://radiomv.ru/
+      name: radiomv
 
 server:
   port: 8080

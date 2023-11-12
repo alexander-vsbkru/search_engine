@@ -3,16 +3,16 @@ package searchengine.model;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "index")
+@Table(name = "`index`")
 public class IndexEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    int id;
     @ManyToOne(cascade = CascadeType.ALL)
     private PageEntity page;
     @ManyToOne(cascade = CascadeType.ALL)
     private LemmaEntity lemma;
-    @Column(nullable = false)
+    @Column(name = "`rank`", nullable = false)
     private float rank;
 
     public int getId() {

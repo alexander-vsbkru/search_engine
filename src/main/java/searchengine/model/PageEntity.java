@@ -5,12 +5,12 @@ import javax.persistence.*;
 @Entity
 @Table(name = "page")
 
-public class PageEntity {
+public class PageEntity implements Comparable<PageEntity> {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne(cascade = CascadeType.MERGE)
     private SiteEntity site;
 
     @Column(nullable = false, columnDefinition = "TEXT")
@@ -60,5 +60,10 @@ public class PageEntity {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    @Override
+    public int compareTo(PageEntity o) {
+        return Integer.compare(o.getId(), this.getId());
     }
 }
