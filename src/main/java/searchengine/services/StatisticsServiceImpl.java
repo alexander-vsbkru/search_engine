@@ -24,13 +24,6 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public StatisticsResponse getStatistics() {
-      /*  String[] statuses = { "INDEXED", "FAILED", "INDEXING" };
-        String[] errors = {
-                "Ошибка индексации: главная страница сайта не доступна",
-                "Ошибка индексации: сайт не доступен",
-                ""
-        };*/
-
         List<SiteEntity> sitesList = siteEntityRepository.findAll();
         TotalStatistics total = new TotalStatistics();
         total.setSites(sitesList.size());

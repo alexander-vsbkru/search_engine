@@ -37,7 +37,6 @@ public class Page {
 
         try {
             Connection.Response response = Jsoup.connect(siteParent.getUrl() + link).followRedirects(false).execute();
-            int code = response.statusCode();
             Connection connection = Jsoup.connect(siteParent.getUrl() + link).userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6").referrer("http://www.google.com");
 
         if(response.statusCode() >= 400) {

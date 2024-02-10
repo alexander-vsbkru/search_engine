@@ -3,7 +3,6 @@ package searchengine.repositories;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import searchengine.model.IndexEntity;
-import searchengine.model.PageEntity;
 
 import java.util.List;
 
@@ -16,8 +15,4 @@ public interface IndexEntityRepository extends JpaRepository<IndexEntity, Intege
 
     @Query(value = "SELECT * from `index` where lemma_id in (:lemmaId)", nativeQuery = true)
     List<IndexEntity> selectIndexIdByLemmaId(List<Integer> lemmaId);
-
- //   @Query(value = "SELECT page_id from `index` where lemma_id = :lemmaId", nativeQuery = true)
- //   List<PageEntity> selectPageIdByLemmaId(List<Integer> lemmaId);
-
 }

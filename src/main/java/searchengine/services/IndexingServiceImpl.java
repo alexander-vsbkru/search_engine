@@ -193,11 +193,7 @@ public class IndexingServiceImpl implements IndexingService {
         String response = "";
         List<Integer> responseIndexes = getFindIndexText(lemmaIndexMap, getLemmaMap);
 
-        if (responseIndexes.isEmpty()) {
-            System.out.println("Совпадений не найдено.");
-        }
-        else {
-            System.out.println(responseIndexes);
+        if (!responseIndexes.isEmpty()) {
             int startString = Collections.min(responseIndexes) - 5;
             int endString = Collections.max(responseIndexes) + 5;
             for (int i = startString; i <= endString; i++) {
@@ -225,7 +221,6 @@ public class IndexingServiceImpl implements IndexingService {
 
             }
 
-            System.out.println(response);
         }
 
        return response;
