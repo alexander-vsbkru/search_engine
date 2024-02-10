@@ -36,7 +36,7 @@ public class ApiController<StopIndexingService> {
     public ResponseEntity<JSONObject> startIndexing() throws IOException {
 
         JSONObject response = indexingService.startIndexing();
-        if (response.get("result").equals("true")) {
+        if (response.get("result").equals(true)) {
             return ResponseEntity.ok(response);
         }
         else {
@@ -48,7 +48,7 @@ public class ApiController<StopIndexingService> {
     public ResponseEntity<JSONObject> stopIndexing() {
 
         JSONObject response = indexingService.stopIndexing();
-        if (response.get("result").equals("true")) {
+        if (response.get("result").equals(true)) {
             return ResponseEntity.ok(response);
         }
         else {
@@ -61,7 +61,7 @@ public class ApiController<StopIndexingService> {
     public ResponseEntity<JSONObject> indexPage(@RequestParam String url) throws IOException {
 
         JSONObject response = indexingService.indexPage(url);
-        if (response.get("result").equals("true")) {
+        if (response.get("result").equals(true)) {
             return ResponseEntity.ok(response);
         }
         else {

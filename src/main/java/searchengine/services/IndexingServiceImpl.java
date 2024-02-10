@@ -72,26 +72,6 @@ public class IndexingServiceImpl implements IndexingService {
         return response;
     }
 
-    private void deleteSitesNotInSetting() {
-        List<SiteEntity> siteEntityList = siteEntityRepository.findAll();
-        List<SiteEntity> siteEntityToRemove = new ArrayList<>();
-        if (siteEntityList.isEmpty()) {
-            return;
-        }
-        for (SiteEntity siteEntity : siteEntityList) {
-            for (Site site : sites.getSites()) {
-                if (siteEntity.getUrl().equals(site.getUrl())) {
-                    siteEntityToRemove.add(siteEntity);
-                }
-            }
-        }
-
-        siteEntityList.removeAll(siteEntityToRemove);
-        if (!siteEntityList.isEmpty()) {
-            siteEntityRepository.deleteAll(siteEntityList);
-        }
-    }
-
     @Override
     public JSONObject stopIndexing() {
         JSONObject response = new JSONObject();
@@ -270,7 +250,6 @@ public class IndexingServiceImpl implements IndexingService {
                 return findIndexList;
             }
             for (int i = 1; i < indexList.size(); i++) {
-            //    List<Integer> findMinIndex = new ArrayList<>();
                 int min = 1000;
                 for (int j : indexList.get(i)) {
                     if (Math.abs(min) > Math.abs(j - index))
@@ -497,7 +476,7 @@ public class IndexingServiceImpl implements IndexingService {
         Connection.Response response = Jsoup.connect(site.getUrl()).followRedirects(false).execute();
         int code = response.statusCode();
         String lastError = "";
-        System.out.println("code = " + code);
+
         if (code >= 400) {
             lastError = "Ошибка индексации: главная страница сайта не доступна";
         }
@@ -512,7 +491,6 @@ public class IndexingServiceImpl implements IndexingService {
         ForkJoinPool forkJoinPool = new ForkJoinPool();
         List<String> duplicateLinks = new ArrayList<>();
         List<PageEntity> insertIntoPage = forkJoinPool.invoke(new Links(new Page(newSite, link, duplicateLinks)));//, siteEntityRepository, pageEntityRepository)
-        System.out.println("Строка выполнена");
 
         if (isIndexing) {
             List<PageEntity> pageEntityList = pageEntityRepository.saveAll(insertIntoPage);
@@ -548,6 +526,26 @@ public class IndexingServiceImpl implements IndexingService {
         newPage.setSite(siteEntity);
 
         return newPage;
+    }
+
+    private void deleteSitesNotInSetting() {
+        List<SiteEntity> siteEntityList = siteEntityRepository.findAll();
+        List<SiteEntity> siteEntityToRemove = new ArrayList<>();
+        if (siteEntityList.isEmpty()) {
+            return;
+        }
+        for (SiteEntity siteEntity : siteEntityList) {
+            for (Site site : sites.getSites()) {
+                if (siteEntity.getUrl().equals(site.getUrl())) {
+                    siteEntityToRemove.add(siteEntity);
+                }
+            }
+        }
+
+        siteEntityList.removeAll(siteEntityToRemove);
+        if (!siteEntityList.isEmpty()) {
+            siteEntityRepository.deleteAll(siteEntityList);
+        }
     }
  }
 

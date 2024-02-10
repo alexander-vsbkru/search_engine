@@ -38,10 +38,7 @@ public class Page {
         try {
             Connection.Response response = Jsoup.connect(siteParent.getUrl() + link).followRedirects(false).execute();
             int code = response.statusCode();
-            System.out.println("StatusCode = " + code);
             Connection connection = Jsoup.connect(siteParent.getUrl() + link).userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6").referrer("http://www.google.com");
-      //  Connection.Response response = connection.followRedirects(false).execute();
-
 
         if(response.statusCode() >= 400) {
             return children;
@@ -68,8 +65,6 @@ public class Page {
                     }
                     duplicateLinks.add(link);
                     Logger.getLogger(Page.class.getName()).info("link =  " + link);
-                //    link = link.substring(siteParent.getUrl().length());
-
                     children.add(new Page(siteParent, link, duplicateLinks));
                 }
             }
