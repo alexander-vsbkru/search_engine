@@ -29,9 +29,9 @@ public class LemmaList {
 
             for (String word : wordBase) {
                 List<String> wordBaseForms = luceneMorph.getMorphInfo(word);
-                    if (hasParticleProperty(wordBaseForms)) {
-                        break;
-                    }
+                if (hasParticleProperty(wordBaseForms)) {
+                    break;
+                }
                 int count = 0;
                 if (resultMap.containsKey(word)) {
                     count = resultMap.get(word);
@@ -66,3 +66,4 @@ public class LemmaList {
         return matcher.replaceAll("");
     }
 }
+
