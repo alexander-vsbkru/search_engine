@@ -5,6 +5,7 @@ import searchengine.model.Status;
 
 import java.time.LocalDateTime;
 
+/** Класс детализации статистики */
 @Data
 public class DetailedStatisticsItem {
     private String url;

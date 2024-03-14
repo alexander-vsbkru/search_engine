@@ -16,7 +16,6 @@ public class SiteEntity {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
- //   @Column(columnDefinition = "ENUM('INDEXING', 'INDEXED', 'FAILED')", nullable = false)
     private Status status;
 
     @Column(columnDefinition = "TEXT")

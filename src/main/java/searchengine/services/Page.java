@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.logging.Logger;
 
+/** Класс страницы для обхода страниц сайтов при индексации */
 public class Page {
 
     private final String link;
@@ -32,6 +33,9 @@ public class Page {
         return link;
     }
 
+    /** Получение дочерних страниц
+     * @return {Collection<Page>} возвращает коллекцию дочерних страниц
+     */
     Collection<Page> getChildren() {
         Collection<Page> children = new ArrayList<>();
 

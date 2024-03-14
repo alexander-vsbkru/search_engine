@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/** Класс для работы с сайтами из файла настроек */
 @Getter
 @Setter
 @Component

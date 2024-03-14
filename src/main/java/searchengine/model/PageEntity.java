@@ -4,7 +4,6 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "page")
-
 public class PageEntity implements Comparable<PageEntity> {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

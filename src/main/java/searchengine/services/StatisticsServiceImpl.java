@@ -14,6 +14,7 @@ import searchengine.repositories.SiteEntityRepository;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Сервис статистики, формирует общую и детальную статистику по проиндексированным сайтам */
 @Service
 @RequiredArgsConstructor
 public class StatisticsServiceImpl implements StatisticsService {
@@ -22,6 +23,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     private final PageEntityRepository pageEntityRepository;
     private final LemmaEntityRepository lemmaEntityRepository;
 
+    /** Возвращение сформированной статистики */
     @Override
     public StatisticsResponse getStatistics() {
         List<SiteEntity> sitesList = siteEntityRepository.findAll();
