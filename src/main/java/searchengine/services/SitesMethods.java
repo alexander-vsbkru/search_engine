@@ -101,7 +101,7 @@ public class SitesMethods {
         String siteUrl;
         String path;
         if (matcher.find()) {
-            siteUrl = page.substring(matcher.start(), matcher.end() + 1);
+            siteUrl = page.substring(matcher.start(), matcher.end());
             path = page.substring(matcher.end());
             return new PagePath(siteUrl, path);
         }

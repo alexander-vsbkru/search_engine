@@ -117,7 +117,7 @@ public class SearchServiceImpl implements SearchService {
             SearchData searchData = new SearchData();
             searchData.setSite(page.getKey().getSite().getUrl());
             searchData.setSiteName(page.getKey().getSite().getName());
-            searchData.setUrl(page.getKey().getPath());
+            searchData.setUri(page.getKey().getPath());
             searchData.setTitle(getTitle(page.getKey().getContent()));
             searchData.setSnippet(getSnippet(page.getKey().getContent(), lemmaRequestMap));
             searchData.setRelevance(page.getValue());
