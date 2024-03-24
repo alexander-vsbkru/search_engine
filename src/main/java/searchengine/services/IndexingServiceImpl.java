@@ -1,6 +1,7 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +44,8 @@ public class IndexingServiceImpl implements IndexingService {
     /** Класс методов для работы с репозиториями */
     RepositoryMethods repositoryMethods;
 
+    List<Thread> threadSiteIndexingList = new ArrayList<>();
+
     /** Конструтор - создание нового объекта */
     @Autowired
     public IndexingServiceImpl(SitesList sites,
@@ -60,7 +63,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     /** Запуск индексации сайтов */
     @Override
-    public IndexResponse startIndexing() throws IOException {
+    public IndexResponse startIndexing() {
         if (isIndexing) {
             return new IndexResponseError("Индексация уже запущена");
         }
@@ -68,10 +71,14 @@ public class IndexingServiceImpl implements IndexingService {
         isIndexing = true;
         SitesMethods sitesMethods = new SitesMethods(sites, siteEntityRepository);
         sitesMethods.deleteSitesNotInSetting();
+
         for (Site site : sites.getSites()) {
-            indexing(site);
+            threadSiteIndexingList.add(threadIndexing(site));
         }
-        isIndexing = false;
+        for (Thread thread : threadSiteIndexingList) {
+            thread.start();
+        }
+
         return response;
     }
 
@@ -83,6 +90,10 @@ public class IndexingServiceImpl implements IndexingService {
         }
         IndexResponseOk response = new IndexResponseOk();
         isIndexing = false;
+        for (Thread thread : threadSiteIndexingList) {
+            thread.interrupt();
+        }
+        threadSiteIndexingList.clear();
         ForkJoinPool pool = ForkJoinPool.commonPool();
         pool.shutdownNow();
         List<SiteEntity> indexingSiteList = siteEntityRepository.selectSiteIdByStatus("INDEXING");
@@ -130,7 +141,8 @@ public class IndexingServiceImpl implements IndexingService {
     /** Индексация по заданному сайту
      * @param site {Site} принимает в качестве параметра адрес страницы
      */
-    private void indexing(Site site) throws IOException {
+    @SneakyThrows
+    private void indexing(Site site) {
         siteEntityRepository.deleteAll(siteEntityRepository.selectSiteIdByUrl(site.getUrl()));
         Connection.Response response = Jsoup.connect(site.getUrl()).followRedirects(false).execute();
         int code = response.statusCode();
@@ -150,7 +162,7 @@ public class IndexingServiceImpl implements IndexingService {
                 repositoryMethods.addLemmaIndex(pageEntity);
                 newSite.setStatus_time(LocalDateTime.now());
                 siteEntityRepository.save(newSite);
-            }
+                    }
             newSite.setStatus(Status.INDEXED);
             newSite.setStatus_time(LocalDateTime.now());
             newSite.setLast_error(null);
@@ -158,5 +170,14 @@ public class IndexingServiceImpl implements IndexingService {
         }
     }
 
+    private Thread threadIndexing(Site site) {
+            return new Thread(() -> {
+                while (!Thread.interrupted()) {
+                    indexing(site);
+                }
+                System.out.println("поток по сайту " + site.getUrl() + " остановлен");
+            });
+
+        }
 }
 
