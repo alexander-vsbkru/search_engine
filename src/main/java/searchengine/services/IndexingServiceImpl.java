@@ -78,7 +78,6 @@ public class IndexingServiceImpl implements IndexingService {
         for (Thread thread : threadSiteIndexingList) {
             thread.start();
         }
-
         return response;
     }
 
@@ -171,13 +170,12 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     private Thread threadIndexing(Site site) {
-            return new Thread(() -> {
-                while (!Thread.interrupted()) {
-                    indexing(site);
-                }
-                System.out.println("поток по сайту " + site.getUrl() + " остановлен");
-            });
+        return new Thread(() -> {
+            while (!Thread.interrupted()) {
+                indexing(site);
+            }
+        });
 
-        }
+    }
 }
 
