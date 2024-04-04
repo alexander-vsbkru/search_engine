@@ -1,7 +1,6 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,9 +10,7 @@ import searchengine.config.SitesList;
 import searchengine.dto.index.IndexResponse;
 import searchengine.dto.index.IndexResponseError;
 import searchengine.dto.index.IndexResponseOk;
-import searchengine.model.PageEntity;
-import searchengine.model.SiteEntity;
-import searchengine.model.Status;
+import searchengine.model.*;
 import searchengine.repositories.IndexEntityRepository;
 import searchengine.repositories.LemmaEntityRepository;
 import searchengine.repositories.PageEntityRepository;
@@ -22,6 +19,7 @@ import searchengine.repositories.SiteEntityRepository;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 
@@ -43,7 +41,6 @@ public class IndexingServiceImpl implements IndexingService {
     IndexEntityRepository indexEntityRepository;
     /** Класс методов для работы с репозиториями */
     RepositoryMethods repositoryMethods;
-
     List<Thread> threadSiteIndexingList = new ArrayList<>();
 
     /** Конструтор - создание нового объекта */
@@ -64,6 +61,7 @@ public class IndexingServiceImpl implements IndexingService {
     /** Запуск индексации сайтов */
     @Override
     public IndexResponse startIndexing() {
+        isIndexing = !threadSiteIndexingList.isEmpty();
         if (isIndexing) {
             return new IndexResponseError("Индексация уже запущена");
         }
@@ -84,6 +82,7 @@ public class IndexingServiceImpl implements IndexingService {
     /** Остановка индексации сайтов */
     @Override
     public IndexResponse stopIndexing() {
+        isIndexing = !threadSiteIndexingList.isEmpty();
         if (!isIndexing) {
             return new IndexResponseError("Индексация не запущена");
         }
@@ -93,14 +92,6 @@ public class IndexingServiceImpl implements IndexingService {
             thread.interrupt();
         }
         threadSiteIndexingList.clear();
-        ForkJoinPool pool = ForkJoinPool.commonPool();
-        pool.shutdownNow();
-        List<SiteEntity> indexingSiteList = siteEntityRepository.selectSiteIdByStatus("INDEXING");
-        for (SiteEntity siteEntity : indexingSiteList) {
-            siteEntity.setStatus(Status.FAILED);
-            siteEntity.setLast_error("Индексация остановлена пользователем");
-            siteEntityRepository.save(siteEntity);
-        }
         return response;
     }
 
@@ -128,54 +119,92 @@ public class IndexingServiceImpl implements IndexingService {
         repositoryMethods.deletePage(siteEntity, pagePath.getPath());
         PageEntity pageEntity = pageEntityRepository.save(RepositoryMethods.addOnePageToDB(siteEntity, pagePath.getPath()));
         if (pageEntity.getCode() >= 400) {
-            repositoryMethods.addLemmaIndex(pageEntity);
+            addLemmaIndex(pageEntity);
         }
         siteEntity.setStatus(Status.INDEXED);
-        siteEntity.setLast_error("null");
+        siteEntity.setLast_error(null);
         siteEntity.setStatus_time(LocalDateTime.now());
         siteEntityRepository.save(siteEntity);
         return true;
     }
 
+    /** Добавление лемм и индексов для страницы
+     * @param pageEntity {PageEntity} Принимает адрес страницы page
+     */
+    public void addLemmaIndex(PageEntity pageEntity) throws IOException {
+        GetLemmasFromText getLemmasFromText = new GetLemmasFromText();
+        HashMap<String, Integer> lemmaMap = new HashMap<>();
+        HashMap<List<String>, Integer> lemmaMapByWordBase = new HashMap<>(getLemmasFromText.getLemmaList(pageEntity.getContent()));
+        for (List<String> lemmaList : lemmaMapByWordBase.keySet()) {
+            for (String lemma : lemmaList) {
+                lemmaMap.put(lemma, lemmaMapByWordBase.get(lemmaList));
+            }
+        }
+        for (String keyLemma : lemmaMap.keySet()) {
+            if (!isIndexing) break;
+            LemmaEntity lemmaEntity = repositoryMethods.getLemmaEntity(pageEntity, keyLemma);
+            lemmaEntityRepository.save(lemmaEntity);
+            List<String> keyLemmaList = new ArrayList<>();
+            keyLemmaList.add(keyLemma);
+            List<IndexEntity> indexFromDB = indexEntityRepository.selectIndexIdByPageIdAndLemmaId(
+                    pageEntity.getId(), lemmaEntityRepository.selectLemmaIdByLemma(keyLemmaList));
+            IndexEntity indexEntity = repositoryMethods.getIndexEntityFromDB(indexFromDB, lemmaEntity, pageEntity);
+            indexEntity.setRank(lemmaMap.get(keyLemma));
+            indexEntityRepository.save(indexEntity);
+        }
+    }
+
     /** Индексация по заданному сайту
      * @param site {Site} принимает в качестве параметра адрес страницы
      */
-    @SneakyThrows
-    private void indexing(Site site) {
+    private void indexing(Site site,  ForkJoinPool forkJoinPool) throws IOException {
         siteEntityRepository.deleteAll(siteEntityRepository.selectSiteIdByUrl(site.getUrl()));
         Connection.Response response = Jsoup.connect(site.getUrl()).followRedirects(false).execute();
         int code = response.statusCode();
-        String lastError = "";
         if (code >= 400) {
-            lastError = "Ошибка индексации: главная страница сайта не доступна";
+            siteEntityRepository.save(RepositoryMethods.createSiteEntity(site.getName(), site.getUrl(), "Ошибка индексации: главная страница сайта не доступна"));
+            return;
         }
-        SiteEntity newSite = siteEntityRepository.save(RepositoryMethods.createSiteEntity(site.getName(), site.getUrl(), lastError));
-        if (code >= 400) return;
+        SiteEntity newSite = siteEntityRepository.save(RepositoryMethods.createSiteEntity(site.getName(), site.getUrl(), "null"));
         String link = "";
-        ForkJoinPool forkJoinPool = new ForkJoinPool();
         List<String> duplicateLinks = new ArrayList<>();
         List<PageEntity> insertIntoPage = forkJoinPool.invoke(new LinksParser(new Page(newSite, link, duplicateLinks)));
-        if (isIndexing) {
-            List<PageEntity> pageEntityList = pageEntityRepository.saveAll(insertIntoPage);
-            for (PageEntity pageEntity : pageEntityList) {
-                repositoryMethods.addLemmaIndex(pageEntity);
-                newSite.setStatus_time(LocalDateTime.now());
-                siteEntityRepository.save(newSite);
-                    }
-            newSite.setStatus(Status.INDEXED);
+        List<PageEntity> pageEntityList = new ArrayList<>();
+        if (isIndexing) pageEntityList = pageEntityRepository.saveAll(insertIntoPage);
+        for (PageEntity pageEntity : pageEntityList) {
+            if (!isIndexing) break;
+            addLemmaIndex(pageEntity);
             newSite.setStatus_time(LocalDateTime.now());
-            newSite.setLast_error(null);
             siteEntityRepository.save(newSite);
         }
+        if (isIndexing) {
+            newSite.setStatus(Status.INDEXED);
+            newSite.setLast_error(null);
+        }
+        else {
+            newSite.setStatus(Status.FAILED);
+            newSite.setLast_error("Индексация остановлена пользователем");
+        }
+        newSite.setStatus_time(LocalDateTime.now());
+        siteEntityRepository.save(newSite);
     }
 
     private Thread threadIndexing(Site site) {
-        return new Thread(() -> {
-            while (!Thread.interrupted()) {
-                indexing(site);
+        return new Thread() {
+            final ForkJoinPool forkJoinPool = new ForkJoinPool();
+            @Override
+            public void run() {
+                try {
+                    indexing(site, forkJoinPool);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
-        });
 
+            @Override
+            public void interrupt() {
+                forkJoinPool.shutdown();
+            }
+        };
     }
 }
-

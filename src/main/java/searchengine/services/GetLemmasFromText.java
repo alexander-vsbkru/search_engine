@@ -4,6 +4,7 @@ import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -20,28 +21,29 @@ public class GetLemmasFromText {
      * @param text {string} получает параметр текст
      * @return {HashMap<String, Integer>} возвращает HashMap<String, Integer> со списком лемм с их количеством в тексте
      */
-    public HashMap<String, Integer> getLemmaList(String text) throws IOException {
-        HashMap<String, Integer> resultMap = new HashMap<>();
+    public HashMap<List<String>, Integer> getLemmaList(String text) throws IOException {
+        HashMap<List<String>, Integer> resultMap = new HashMap<>();
         String resultWithoutTags = deleteTags(text);
         Pattern pattern = Pattern.compile(WORD_TYPE_REGEX);
         Matcher matcher = pattern.matcher(resultWithoutTags);
 
         while (matcher.find()) {
             List<String> wordBase = getWordBase(matcher, resultWithoutTags);
-
+            int count = 0;
+            List<String> lemmaList = new ArrayList<>();
             for (String word : wordBase) {
                 LuceneMorphology luceneMorph = new RussianLuceneMorphology();
                 List<String> wordBaseForms = luceneMorph.getMorphInfo(word);
                 if (hasParticleProperty(wordBaseForms)) {
                     break;
                 }
-                int count = 0;
-                if (resultMap.containsKey(word)) {
-                    count = resultMap.get(word);
-                }
-                count++;
-                resultMap.put(word, count);
+                lemmaList.add(word);
             }
+            if (resultMap.containsKey(lemmaList)) {
+                count = resultMap.get(lemmaList);
+            }
+            count++;
+            resultMap.put(lemmaList, count);
         }
         return resultMap;
     }

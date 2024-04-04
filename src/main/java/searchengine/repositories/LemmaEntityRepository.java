@@ -1,7 +1,6 @@
 package searchengine.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import searchengine.model.LemmaEntity;
 
@@ -29,8 +28,8 @@ public interface LemmaEntityRepository extends JpaRepository<LemmaEntity, Intege
      * @param lemma {String} принимает параметр лемма
      * @return {List<Integer>} возвращает список id лемм по заданным параметрам
      */
-    @Query(value = "SELECT id from lemma where lemma = :lemma", nativeQuery = true)
-    List<Integer> selectLemmaIdByLemma(String lemma);
+    @Query(value = "SELECT id from lemma where lemma in (:lemma)", nativeQuery = true)
+    List<Integer> selectLemmaIdByLemma(List<String> lemma);
 
     /** Поиск лемм по частоте
      * @param frequency {int} принимает параметр частота леммы

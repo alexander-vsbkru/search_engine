@@ -9,7 +9,7 @@ public class LemmaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     int id;
 
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne(cascade = CascadeType.MERGE)
     private SiteEntity site;
 
     @Column(nullable = false, columnDefinition = "VARCHAR(255)")

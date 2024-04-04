@@ -8,9 +8,9 @@ public class IndexEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     int id;
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne(cascade = CascadeType.MERGE)
     private PageEntity page;
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne(cascade = CascadeType.MERGE)
     private LemmaEntity lemma;
     @Column(name = "`rank`", nullable = false)
     private float rank;

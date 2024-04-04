@@ -19,7 +19,6 @@ public class LinksParser extends RecursiveTask<List<PageEntity>>
     @Override
     protected List<PageEntity> compute(){
         List<PageEntity> links = new ArrayList<>();
-
         List<LinksParser> linksParserList = new ArrayList<>();
         try {
             Thread.sleep(5000);

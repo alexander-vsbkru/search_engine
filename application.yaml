@@ -1,10 +1,10 @@
 
 indexing-settings:
   sites:
+    - url: https://nikoartgallery.com/
+      name: nikoartgallery
     - url: https://www.svetlovka.ru/
       name: svetlovka
-    - url: http://radiomv.ru/
-      name: radiomv
 
 server:
   port: 8080

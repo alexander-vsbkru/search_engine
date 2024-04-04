@@ -10,7 +10,6 @@ import searchengine.repositories.PageEntityRepository;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 /** Класс методов для работы с репозиторием */
@@ -27,29 +26,12 @@ public class RepositoryMethods {
         this.pageEntityRepository = pageEntityRepository;
     }
 
-    /** Добавление лемм и индексов для страницы
-     * @param pageEntity {PageEntity} Принимает адрес страницы page
-     */
-    public void addLemmaIndex(PageEntity pageEntity) throws IOException {
-        GetLemmasFromText getLemmasFromText = new GetLemmasFromText();
-        HashMap<String, Integer> lemmaMap = new HashMap<>(getLemmasFromText.getLemmaList(pageEntity.getContent()));
-        for (String keyLemma : lemmaMap.keySet()) {
-            LemmaEntity lemmaEntity = getLemmaEntity(pageEntity, keyLemma);
-            String lemma = lemmaEntityRepository.save(lemmaEntity).getLemma();
-            List<IndexEntity> indexFromDB = indexEntityRepository.selectIndexIdByPageIdAndLemmaId(
-                    pageEntity.getId(), lemmaEntityRepository.selectLemmaIdByLemma(lemma));
-            IndexEntity indexEntity = getIndexEntityFromDB(indexFromDB, lemmaEntity, pageEntity);
-            indexEntity.setRank(lemmaMap.get(keyLemma));
-            indexEntityRepository.save(indexEntity);
-        }
-    }
-
     /** Получение записи LemmaEntity по странице и лемме
      * @param pageEntity {PageEntity} Принимает страницу из базы в качестве параметра
      * @param lemma {String} Принимает лемму в качестве параметра
      * @return {LemmaEntity} Возвращает LemmaEntity в соответствии с параметрами
      */
-    private LemmaEntity getLemmaEntity(PageEntity pageEntity, String lemma) {
+    public LemmaEntity getLemmaEntity(PageEntity pageEntity, String lemma) {
         List<Integer> siteIds = new ArrayList<>();
         siteIds.add(pageEntity.getSite().getId());
         List<String> lemmas = new ArrayList<>();
@@ -77,7 +59,7 @@ public class RepositoryMethods {
      * @param pageEntity {PageEntity} Принимает страницу из базы в качестве параметр
      * @return {IndexEntity} Возвращает IndexEntity в соответствии с параметрами
      */
-    private IndexEntity getIndexEntityFromDB(List<IndexEntity> indexFromDB, LemmaEntity lemmaEntity, PageEntity pageEntity) {
+    public IndexEntity getIndexEntityFromDB(List<IndexEntity> indexFromDB, LemmaEntity lemmaEntity, PageEntity pageEntity) {
         IndexEntity indexEntity = new IndexEntity();
 
         if (indexFromDB.isEmpty()) {

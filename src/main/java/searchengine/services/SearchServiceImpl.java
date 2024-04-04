@@ -60,17 +60,17 @@ public class SearchServiceImpl implements SearchService {
                 siteEntityList.addAll(siteEntityRepository.selectSiteIdByUrl(site));
             }
             GetLemmasFromText getLemmasFromText = new GetLemmasFromText();
-            Map<String, Integer> lemmaRequestMap = new HashMap<>(getLemmasFromText.getLemmaList(query));
-            List<LemmaEntity> lemmaEntityList = getLemmaListFromDB(lemmaRequestMap, siteEntityList);
+            Map<List<String>, Integer> lemmaRequestMap = new HashMap<>(getLemmasFromText.getLemmaList(query));
+            List<List<LemmaEntity>> lemmaEntityList = getLemmaListFromDB(lemmaRequestMap, siteEntityList);
             if (lemmaEntityList.size() == 0) {
                response.setCount(0);
                response.setData(data);
                return response;
             }
-            TreeSet<Map.Entry<PageEntity, Float>> pageEntityMap = getSortPageMap(lemmaEntityList);
+            Map<PageEntity, Float> pageEntityMap = getSortPageMap(lemmaEntityList);
             response.setCount(pageEntityMap.size());
-            response.setData(getDataForResponse(getSubSet(pageEntityMap, offset, limit), lemmaRequestMap));
-
+            Map<PageEntity, Float> subSetPageMap = getSubSet(pageEntityMap, offset, limit);
+            response.setData(getDataForResponse(subSetPageMap, lemmaRequestMap));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -84,24 +84,22 @@ public class SearchServiceImpl implements SearchService {
      * @return {TreeSet<Map.Entry<PageEntity, Float>>} Возвращает TreeSet<Map.Entry<PageEntity, Float>>
      *     в соответствии с  полученным диапазоном
      */
-    private TreeSet<Map.Entry<PageEntity, Float>> getSubSet(TreeSet<Map.Entry<PageEntity, Float>> pageEntityMap,
+    private Map<PageEntity, Float> getSubSet(Map<PageEntity, Float> pageEntityMap,
                                                         int offset, int limit) {
         if (limit == 0) limit = 20;
-        int start = offset * limit;
-        int end = start + limit;
-        TreeSet<Map.Entry<PageEntity, Float>> pageSubSet = new TreeSet<>(Comparator.comparingDouble(Map.Entry<PageEntity, Float>::getValue).reversed());
-        if (pageEntityMap.size() < start) {
-            start = 0;
+        if (pageEntityMap.size() < offset) {
+            offset = 0;
         }
-        var i = 0;
-        for (Map.Entry<PageEntity, Float> key : pageEntityMap) {
-            if ((i >= start)&&(i < end)) {
-                pageSubSet.add(key);
+        TreeMap<PageEntity, Float> treeMap = new TreeMap<>();
+        int i = 0;
+        for (PageEntity key : pageEntityMap.keySet()) {
+            if ((i >= offset)&&(i < offset + limit)) {
+                treeMap.put(key, pageEntityMap.get(key));
             }
             i++;
-            if (i == end) break;
+            if (i == offset + limit) break;
         }
-            return pageSubSet;
+        return sortByValues(treeMap);
     }
 
     /** Получение данных о найденных страницах data для ответа
@@ -110,17 +108,17 @@ public class SearchServiceImpl implements SearchService {
      * @param lemmaRequestMap {Map<String, Integer>} Принимает параметр Map лемм,полученных из запроса
      * @return {List<SearchData>} Возвращает List<SearchData> в соответствии с  полученным запросом
      */
-    private List<SearchData> getDataForResponse(TreeSet<Map.Entry<PageEntity, Float>> pageEntityMap,
-                                                Map<String, Integer> lemmaRequestMap) throws IOException {
+    private List<SearchData> getDataForResponse(Map<PageEntity, Float> pageEntityMap,
+                                                Map<List<String>, Integer> lemmaRequestMap) throws IOException {
         List<SearchData> data = new ArrayList<>();
-        for (Map.Entry<PageEntity, Float> page : pageEntityMap) {
+        for (PageEntity page : pageEntityMap.keySet()) {
             SearchData searchData = new SearchData();
-            searchData.setSite(page.getKey().getSite().getUrl());
-            searchData.setSiteName(page.getKey().getSite().getName());
-            searchData.setUri(page.getKey().getPath());
-            searchData.setTitle(getTitle(page.getKey().getContent()));
-            searchData.setSnippet(getSnippet(page.getKey().getContent(), lemmaRequestMap));
-            searchData.setRelevance(page.getValue());
+            searchData.setSite(page.getSite().getUrl());
+            searchData.setSiteName(page.getSite().getName());
+            searchData.setUri(page.getPath());
+            searchData.setTitle(getTitle(page.getContent()));
+            searchData.setSnippet(getSnippet(page.getContent(), lemmaRequestMap));
+            searchData.setRelevance(pageEntityMap.get(page));
             data.add(searchData);
         }
         return data;
@@ -131,14 +129,17 @@ public class SearchServiceImpl implements SearchService {
      * @param siteEntityList {List<SiteEntity>} Принимает параметр List список сайтов
      * @return {List<LemmaEntity>} Возвращает List<LemmaEntity> список записей лемм из базы
      */
-    private List<LemmaEntity> getLemmaListFromDB(Map<String, Integer> lemmaList, List<SiteEntity> siteEntityList) {
+    private List<List<LemmaEntity>> getLemmaListFromDB(Map<List<String>, Integer> lemmaList, List<SiteEntity> siteEntityList) {
         List<Integer> sites = new ArrayList<>();
-
-        List<String> lemmas = new ArrayList<>(lemmaList.keySet());
+        List<List<String>> lemmas = new ArrayList<>(lemmaList.keySet());
+        List<List<LemmaEntity>> response = new ArrayList<>();
         for (SiteEntity siteEntity : siteEntityList) {
             sites.add(siteEntity.getId());
         }
-        return lemmaEntityRepository.selectLemmaIdBySiteIdAndLemmaOrderByFreq(sites, lemmas);
+        for (List<String> lemma : lemmas){
+            response.add(lemmaEntityRepository.selectLemmaIdBySiteIdAndLemmaOrderByFreq(sites, lemma));
+        }
+        return response;
     }
 
     /** Получение отсортированной Map с результатами поиска страниц
@@ -146,9 +147,9 @@ public class SearchServiceImpl implements SearchService {
      * @return {TreeSet<Map.Entry<PageEntity, Float>>} Возвращает TreeSet<Map.Entry<PageEntity, Float>>
           список страниц
      */
-    private TreeSet<Map.Entry<PageEntity, Float>> getSortPageMap(List<LemmaEntity> sortedLemmaList) {
+    private Map<PageEntity, Float> getSortPageMap(List<List<LemmaEntity>> sortedLemmaList) {
         Map<PageEntity, Float> pageEntityMap = new HashMap<>();
-        String lemma = sortedLemmaList.get(0).getLemma();
+        List<String> lemma = getLemmasFromLemmaEntityList(sortedLemmaList.get(0));
         List<PageEntity> pageEntityList = new ArrayList<>();
         List<IndexEntity> indexEntityList = indexEntityRepository.selectIndexIdByLemmaId(lemmaEntityRepository.selectLemmaIdByLemma(lemma));
         for (IndexEntity indexEntity : indexEntityList) {
@@ -158,23 +159,38 @@ public class SearchServiceImpl implements SearchService {
         }
         for (PageEntity pageEntity : pageEntityList) {
             float rank = 0;
-            for (LemmaEntity lemmaEntity : sortedLemmaList) {
+            for (List<LemmaEntity> lemmaEntityList : sortedLemmaList) {
                 List<IndexEntity> indexList = indexEntityRepository.selectIndexIdByPageIdAndLemmaId(pageEntity.getId(),
-                        lemmaEntityRepository.selectLemmaIdByLemma(lemmaEntity.getLemma()));
+                        lemmaEntityRepository.selectLemmaIdByLemma(getLemmasFromLemmaEntityList(lemmaEntityList)));
                 rank = rank + indexList.get(0).getRank();
             }
             pageEntityMap.put(pageEntity, rank);
         }
-        TreeSet<Map.Entry<PageEntity, Float>> treeSet = new TreeSet<>(Comparator.comparingDouble(Map.Entry<PageEntity, Float>::getValue).reversed());
-
         float max = Collections.max(pageEntityMap.values());
-        treeSet.addAll(pageEntityMap.entrySet());
-        if (treeSet.isEmpty())
-            return treeSet;
-        for (Map.Entry<PageEntity, Float> page : treeSet) {
-            page.setValue(page.getValue()/max);
+        pageEntityMap.replaceAll((p, v) -> pageEntityMap.get(p) / max);
+        return sortByValues(pageEntityMap);
+    }
+
+    public static Map<PageEntity, Float> sortByValues(Map<PageEntity, Float> map) {
+        List<Map.Entry<PageEntity, Float>> entryList = new LinkedList<>(map.entrySet());
+        entryList.sort(Map.Entry.comparingByValue());
+        Map<PageEntity, Float> sortedMap = new LinkedHashMap<>();
+        for (Map.Entry<PageEntity, Float> entry : entryList) {
+            sortedMap.put(entry.getKey(), entry.getValue());
         }
-        return treeSet;
+        return sortedMap;
+    }
+
+    /** Получение заголовка страницы
+     * @param lemmaEntityList {List<LemmaEntity>}  получает параметр список LemmaEntity
+     * @return {List<String>} возвращает список лемм
+     */
+    private List<String> getLemmasFromLemmaEntityList(List<LemmaEntity> lemmaEntityList) {
+        List<String> lemmas = new ArrayList<>();
+        for (LemmaEntity lemmaEntity : lemmaEntityList) {
+            lemmas.add(lemmaEntity.getLemma());
+        }
+        return lemmas;
     }
 
     /** Получение заголовка страницы
@@ -197,11 +213,11 @@ public class SearchServiceImpl implements SearchService {
      * @param getLemmaMap {Map<String, Integer>} получает параметр список лемм
      * @return {String} возвращает сниппет
      */
-    private String getSnippet(String text, Map<String, Integer> getLemmaMap) throws IOException {
+    private String getSnippet(String text, Map<List<String>, Integer> getLemmaMap) throws IOException {
         GetLemmasFromText getLemmasFromText = new GetLemmasFromText();
         String resultWithoutTags = getLemmasFromText.deleteTags(text);
         List<String> textInWordList = new ArrayList<>(List.of(resultWithoutTags.split("\\s+")));
-        Map<String, List<Integer>> lemmaIndexMap = new HashMap<>();
+        Map<List<String>, List<Integer>> lemmaIndexMap = new HashMap<>();
         for (int i = 0; i < textInWordList.size(); i++) {
             Pattern pattern = Pattern.compile("[А-яЁё]+");
             Matcher matcher = pattern.matcher(textInWordList.get(i));
@@ -239,18 +255,14 @@ public class SearchServiceImpl implements SearchService {
             if (responseIndexes.contains(i)) {
                 response = response.concat("<b>");
             }
-
             Pattern pattern = Pattern.compile("[-().,А-яЁё]+");
             Matcher matcher = pattern.matcher(textInWordList.get(i));
-
             if (matcher.find()) {
                 response = response.concat(textInWordList.get(i));
             }
-
             if (responseIndexes.contains(i)) {
                 response = response.concat("</" + "b>");
             }
-
         }
         return response;
     }
@@ -261,16 +273,13 @@ public class SearchServiceImpl implements SearchService {
      * @param index {int} получает параметр индекс слова в тексте
      * @return {Map<String, List<Integer>} возвращает Map слов с их порядковыми номерами в тексте
      */
-    private Map<String, List<Integer>> getWordIndexMap(List<String> wordBase, Map<String, List<Integer>> lemmaIndexList, int index) {
-
-        for (String word : wordBase) {
-            List<Integer> indexList = new ArrayList<>();
-            if (lemmaIndexList.containsKey(word)) {
-                indexList.addAll(lemmaIndexList.get(word));
-            }
-            indexList.add(index);
-            lemmaIndexList.put(word, indexList);
+    private Map<List<String>, List<Integer>> getWordIndexMap(List<String> wordBase, Map<List<String>, List<Integer>> lemmaIndexList, int index) {
+        List<Integer> indexList = new ArrayList<>();
+        if (lemmaIndexList.containsKey(wordBase)) {
+            indexList.addAll(lemmaIndexList.get(wordBase));
         }
+            indexList.add(index);
+        lemmaIndexList.put(wordBase, indexList);
         return lemmaIndexList;
     }
 
@@ -279,16 +288,14 @@ public class SearchServiceImpl implements SearchService {
      * @param requestLemmaMap {Map<String, List<Integer>>} получает параметр список лемм из запроса
      * @return {List<Integer>} возвращает список индексов слов для сниппета
      */
-    private static List<Integer> getFindIndexWordsForSnippet(Map<String, List<Integer>> textLemmaMap, Map<String, Integer> requestLemmaMap) {
+    private static List<Integer> getFindIndexWordsForSnippet(Map<List<String>, List<Integer>> textLemmaMap, Map<List<String>, Integer> requestLemmaMap) {
         List<List<Integer>> indexList = new ArrayList<>();
-        for (String lemma : requestLemmaMap.keySet()) {
+        for (List<String> lemma : requestLemmaMap.keySet()) {
             if (textLemmaMap.containsKey(lemma)) {
                 indexList.add(textLemmaMap.get(lemma));
             }
         }
-
         List<Integer> resultIndexList = new ArrayList<>();
-
         for (int index : indexList.get(0)) {
             List<Integer> findIndexList = new ArrayList<>();
             findIndexList.add(index);
@@ -299,7 +306,6 @@ public class SearchServiceImpl implements SearchService {
             if (resultIndexList.isEmpty()) {
                 resultIndexList.addAll(findIndexList);
             }
-
             int distanceBetweenWordsResult = Collections.max(resultIndexList) - Collections.min(resultIndexList);
             int distanceBetweenWordsFind = Collections.max(findIndexList) - Collections.min(findIndexList);
             if (distanceBetweenWordsResult > distanceBetweenWordsFind) {
@@ -328,5 +334,4 @@ public class SearchServiceImpl implements SearchService {
         }
         return findIndexList;
     }
-
 }
