@@ -1,5 +1,6 @@
-package searchengine.services;
+package searchengine.utils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /** Класс страницы для обхода страниц сайтов при индексации */
+@Slf4j
 public class Page {
 
     private final String link;
@@ -72,7 +74,7 @@ public class Page {
                 }
             }
         }  catch (Exception ex) {
-            ex.printStackTrace();
+            log.error(ex.toString());
         }
         return children;
     }

@@ -1,5 +1,6 @@
 package searchengine.controllers;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,7 @@ import java.io.IOException;
 /** Контроллер для работы с API */
 @RestController
 @RequestMapping("/api")
+@Slf4j
 public class ApiController<StopIndexingService> {
 
     private final StatisticsService statisticsService;
@@ -35,10 +37,15 @@ public class ApiController<StopIndexingService> {
 
     /** Запуск общей индексации */
     @GetMapping("/startIndexing")
-    public ResponseEntity<IndexResponse> startIndexing() throws IOException {
+    public ResponseEntity<IndexResponse> startIndexing() {
 
-        IndexResponse response = indexingService.startIndexing();
-        if (response.getResult()) {
+        IndexResponse response = null;
+        try {
+            response = indexingService.startIndexing();
+        } catch (IOException e) {
+            log.error(e.toString());
+        }
+        if (response != null && response.getResult()) {
             return ResponseEntity.ok(response);
         }
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(response);
@@ -57,10 +64,15 @@ public class ApiController<StopIndexingService> {
 
     /** Индексация одной страницы */
     @PostMapping(value = "/indexPage")
-    public ResponseEntity<IndexResponse> indexPage(@RequestParam String url) throws IOException {
+    public ResponseEntity<IndexResponse> indexPage(@RequestParam String url) {
 
-        IndexResponse response = indexingService.indexPage(url);
-        if (response.getResult()) {
+        IndexResponse response = null;
+        try {
+            response = indexingService.indexPage(url);
+        } catch (IOException e) {
+            log.error(e.toString());
+        }
+        if (response != null && response.getResult()) {
             return ResponseEntity.ok(response);
         }
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);

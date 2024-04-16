@@ -1,4 +1,4 @@
-package searchengine.services;
+package searchengine.utils;
 
 import searchengine.config.Site;
 import searchengine.config.SitesList;
@@ -14,8 +14,8 @@ import java.util.regex.Pattern;
 
 /** Класс методов работы с сайтами */
 public class SitesMethods {
-    SitesList sites;
-    SiteEntityRepository siteEntityRepository;
+    private final SitesList sites;
+    private final SiteEntityRepository siteEntityRepository;
 
     public SitesMethods(SitesList sites, SiteEntityRepository siteEntityRepository){
         this.sites = sites;

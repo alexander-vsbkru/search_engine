@@ -5,8 +5,7 @@ import lombok.Data;
  /** Класс ответа индексации с ошибкой */
 @Data
 public class IndexResponseError implements IndexResponse{
-    boolean result = false;
-    String error;
+    private final String error;
     public IndexResponseError(String error){
         this.error = error;
     }

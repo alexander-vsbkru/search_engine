@@ -1,4 +1,4 @@
-package searchengine.services;
+package searchengine.utils;
 
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
@@ -86,10 +86,9 @@ public class GetLemmasFromText {
         Pattern pattern = Pattern.compile(tag_regex);
         Matcher matcher = pattern.matcher(text);
 
-        if (text.length() == 0) {
+        if (text.isBlank()) {
             return text;
         }
         return matcher.replaceAll("");
     }
 }
-

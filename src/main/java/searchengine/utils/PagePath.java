@@ -1,4 +1,4 @@
-package searchengine.services;
+package searchengine.utils;
 
 /** Класс хранения адреса страницы, разделенного на адрес сайта и адрес самой страницы */
 public record PagePath(String siteUrl, String path) {

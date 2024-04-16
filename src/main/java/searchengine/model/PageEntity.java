@@ -25,10 +25,6 @@ public class PageEntity implements Comparable<PageEntity> {
         return id;
     }
 
-    public void setId(int id) {
-        this.id = id;
-    }
-
     public SiteEntity getSite() {
         return site;
     }
@@ -62,7 +58,7 @@ public class PageEntity implements Comparable<PageEntity> {
     }
 
     @Override
-    public int compareTo(PageEntity o) {
-        return Integer.compare(o.getId(), this.getId());
+    public int compareTo(PageEntity p) {
+        return Integer.compare(p.getId(), this.getId());
     }
 }

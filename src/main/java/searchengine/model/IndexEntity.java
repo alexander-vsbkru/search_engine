@@ -7,7 +7,7 @@ import javax.persistence.*;
 public class IndexEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    int id;
+    private int id;
     @ManyToOne(cascade = CascadeType.MERGE)
     private PageEntity page;
     @ManyToOne(cascade = CascadeType.MERGE)

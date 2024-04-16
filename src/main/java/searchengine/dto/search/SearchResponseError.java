@@ -6,8 +6,7 @@ import lombok.Data;
 
 @Data
 public class SearchResponseError implements SearchResponse {
-    private boolean result = false;
-    private String error;
+    private final String error;
 
 public SearchResponseError(String error) {
     this.error = error;

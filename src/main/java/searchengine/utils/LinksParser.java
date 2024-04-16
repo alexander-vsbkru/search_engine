@@ -1,14 +1,14 @@
-package searchengine.services;
+package searchengine.utils;
 
-import searchengine.model.PageEntity;
+import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.RecursiveTask;
 
 /** Класс задачи по обходу страниц сайта */
-public class LinksParser extends RecursiveTask<List<PageEntity>>
+@Slf4j
+public class LinksParser extends RecursiveTask<List<Page>>
 {
     private final Page page;
 
@@ -17,20 +17,20 @@ public class LinksParser extends RecursiveTask<List<PageEntity>>
     }
 
     @Override
-    protected List<PageEntity> compute(){
-        List<PageEntity> links = new ArrayList<>();
+    protected List<Page> compute(){
+        List<Page> links = new ArrayList<>();
         List<LinksParser> linksParserList = new ArrayList<>();
         try {
             Thread.sleep(5000);
             for (Page child : page.getChildren())
             {
-                links.add(RepositoryMethods.addOnePageToDB(child.getSiteParent(), child.getLink()));
+                links.add(new Page(child.getSiteParent(), child.getLink(), null));
                 LinksParser task = new LinksParser(child);
                 task.fork();
                 linksParserList.add(task);
             }
-        } catch (InterruptedException | IOException e) {
-            e.printStackTrace();
+        } catch (InterruptedException e) {
+            log.error(e.toString());
         }
 
         for (LinksParser task : linksParserList) {

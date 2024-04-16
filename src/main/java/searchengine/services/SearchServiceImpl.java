@@ -1,7 +1,7 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import searchengine.dto.search.SearchData;
 import searchengine.dto.search.SearchResponse;
@@ -14,6 +14,7 @@ import searchengine.model.SiteEntity;
 import searchengine.repositories.IndexEntityRepository;
 import searchengine.repositories.LemmaEntityRepository;
 import searchengine.repositories.SiteEntityRepository;
+import searchengine.utils.GetLemmasFromText;
 
 import java.io.IOException;
 import java.util.*;
@@ -23,19 +24,11 @@ import java.util.regex.Pattern;
 /** Сервис поиска */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SearchServiceImpl implements SearchService {
-    SiteEntityRepository siteEntityRepository;
-    LemmaEntityRepository lemmaEntityRepository;
-    IndexEntityRepository indexEntityRepository;
-
-    @Autowired
-    public SearchServiceImpl(SiteEntityRepository siteEntityRepository,
-                             LemmaEntityRepository lemmaEntityRepository,
-                             IndexEntityRepository indexEntityRepository) {
-        this.siteEntityRepository = siteEntityRepository;
-        this.lemmaEntityRepository = lemmaEntityRepository;
-        this.indexEntityRepository = indexEntityRepository;
-    }
+    private final SiteEntityRepository siteEntityRepository;
+    private final LemmaEntityRepository lemmaEntityRepository;
+    private final IndexEntityRepository indexEntityRepository;
 
     /** Осуществление поиска по данным запроса
      * @param query {string} Принимает запрос в виде строки
@@ -62,7 +55,7 @@ public class SearchServiceImpl implements SearchService {
             GetLemmasFromText getLemmasFromText = new GetLemmasFromText();
             Map<List<String>, Integer> lemmaRequestMap = new HashMap<>(getLemmasFromText.getLemmaList(query));
             List<List<LemmaEntity>> lemmaEntityList = getLemmaListFromDB(lemmaRequestMap, siteEntityList);
-            if (lemmaEntityList.size() == 0) {
+            if (lemmaEntityList.isEmpty()) {
                response.setCount(0);
                response.setData(data);
                return response;
@@ -72,7 +65,7 @@ public class SearchServiceImpl implements SearchService {
             Map<PageEntity, Float> subSetPageMap = getSubSet(pageEntityMap, offset, limit);
             response.setData(getDataForResponse(subSetPageMap, lemmaRequestMap));
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.toString());
         }
         return response;
     }
