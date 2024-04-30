@@ -82,7 +82,7 @@ public class SitesMethods {
      */
     public boolean siteInSetting(String url) {
         for (Site site : sites.getSites()) {
-            if (site.getUrl().equals(url)) {
+            if (url.equals(site.getUrl())) {
                 return true;
             }
         }
@@ -101,7 +101,7 @@ public class SitesMethods {
         String siteUrl;
         String path;
         if (matcher.find()) {
-            siteUrl = page.substring(matcher.start(), matcher.end());
+            siteUrl = page.substring(matcher.start(), matcher.end() + 1);
             path = page.substring(matcher.end());
             return new PagePath(siteUrl, path);
         }

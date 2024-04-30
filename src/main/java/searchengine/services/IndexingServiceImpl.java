@@ -81,9 +81,12 @@ public class IndexingServiceImpl implements IndexingService {
     /** Индексация одной страницы */
     @Override
     public IndexResponse indexPage(String page) {
+        isIndexing = true;
         if (addIndexPage(page)) {
+            isIndexing = false;
             return new IndexResponseOk();
         } else {
+            isIndexing = false;
             return new IndexResponseError("Данная страница находится за пределами сайтов, " +
                     "указанных в конфигурационном файле");
         }
@@ -100,15 +103,11 @@ public class IndexingServiceImpl implements IndexingService {
         if (!sitesMethods.siteInSetting(pagePath.getSiteUrl())) return  false;
         SiteEntity siteEntity = sitesMethods.getSiteEntityFromDB(pagePath.getSiteUrl());
         deletePage(siteEntity, pagePath.getPath());
-        PageEntity pageEntity;
-        pageEntity = pageEntityRepository.save(addOnePageToDB(siteEntity, pagePath.getPath()));
-        if (pageEntity.getCode() >= 400) {
+        PageEntity pageEntity = pageEntityRepository.save(addOnePageToDB(siteEntity, pagePath.getPath()));
+        if (pageEntity.getCode() < 400) {
             addLemmaIndex(pageEntity);
         }
-      //  siteEntity.setStatus(Status.INDEXED);
-        siteEntity.setLast_error(null);
-        siteEntity.setStatus_time(LocalDateTime.now());
-        siteEntityRepository.save(siteEntity);
+        saveSiteToDB(siteEntity, Status.INDEXED, null);
         return true;
     }
 
@@ -146,69 +145,64 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     /** Индексация по заданному сайту
-     * @param site {Site} принимает в качестве параметра адрес страницы
+     * @param newSite {Site} принимает в качестве параметра сущность SiteEntity
      */
-    private void indexing(Site site,  ForkJoinPool forkJoinPool) {
-        siteEntityRepository.deleteAll(siteEntityRepository.selectSiteIdByUrl(site.getUrl()));
-        Connection.Response response = null;
-        try {
-            response = Jsoup.connect(site.getUrl()).followRedirects(false).execute();
-        } catch (IOException e) {
-            log.error(e.toString());
-        }
-        int code = 0;
-        if (response != null) {
-            code = response.statusCode();
-        }
-        if (code >= 400) {
-            siteEntityRepository.save(createSiteEntity(site.getName(), site.getUrl(), "Ошибка индексации: главная страница сайта не доступна"));
-            return;
-        }
-        SiteEntity newSite = siteEntityRepository.save(createSiteEntity(site.getName(), site.getUrl(), ""));
+    private void indexing(SiteEntity newSite,  ForkJoinPool forkJoinPool) {
         String link = "";
         List<String> duplicateLinks = new ArrayList<>();
         List<Page> pageList = forkJoinPool.invoke(new LinksParser(new Page(newSite, link, duplicateLinks)));
         List<PageEntity> pageEntityList = new ArrayList<>();
         List<PageEntity> insertIntoPage = new ArrayList<>();
         for (Page page : pageList) {
-            if (!isIndexing) break;
+            if (!isIndexing) return;
             insertIntoPage.add(addOnePageToDB(page.getSiteParent(), page.getLink()));
         }
-        if (isIndexing) {
-            pageEntityList = pageEntityRepository.saveAll(insertIntoPage);
-        }
+        if (isIndexing) pageEntityList = pageEntityRepository.saveAll(insertIntoPage);
         for (PageEntity pageEntity : pageEntityList) {
-            if (!isIndexing) break;
+            if (!isIndexing) return;
             addLemmaIndex(pageEntity);
             newSite.setStatus_time(LocalDateTime.now());
             siteEntityRepository.save(newSite);
         }
-        if (isIndexing) {
-            newSite.setStatus(Status.INDEXED);
-            newSite.setLast_error(null);
-        }
-        else {
-            newSite.setStatus(Status.FAILED);
-            newSite.setLast_error("Индексация остановлена пользователем");
-        }
-        newSite.setStatus_time(LocalDateTime.now());
-        siteEntityRepository.save(newSite);
+        if (isIndexing)  saveSiteToDB(newSite, Status.INDEXED, null);
+    }
+
+    private void saveSiteToDB(SiteEntity site, Status status, String lastError) {
+        site.setStatus(status);
+        site.setLast_error(lastError);
+        site.setStatus_time(LocalDateTime.now());
+        siteEntityRepository.save(site);
     }
 
     private Thread threadIndexing(Site site) {
         return new Thread() {
             final ForkJoinPool forkJoinPool = new ForkJoinPool();
+            SiteEntity newSite;
             @Override
             public void run() {
-                indexing(site, forkJoinPool);
+                siteEntityRepository.deleteAll(siteEntityRepository.selectSiteIdByUrl(site.getUrl()));
+                newSite = siteEntityRepository.save(createSiteEntity(site.getName(), site.getUrl(), ""));
+                Connection.Response response = null;
+                try {
+                    response = Jsoup.connect(site.getUrl()).followRedirects(false).execute();
+                } catch (IOException e) {
+                    log.error(e.toString());
+                }
+                int code = 0;
+                if (response != null) code = response.statusCode();
+                if (code >= 400)
+                    saveSiteToDB(newSite, Status.FAILED, "Ошибка индексации: главная страница сайта не доступна");
+                else  indexing(newSite, forkJoinPool);
             }
 
             @Override
             public void interrupt() {
+                saveSiteToDB(newSite, Status.FAILED, "Индексация остановлена пользователем");
                 forkJoinPool.shutdown();
             }
         };
     }
+
     /** Получение записи LemmaEntity по странице и лемме
      * @param pageEntity {PageEntity} Принимает страницу из базы в качестве параметра
      * @param lemma {String} Принимает лемму в качестве параметра
@@ -316,12 +310,8 @@ public class IndexingServiceImpl implements IndexingService {
             code = response.statusCode();
         }
         String content = "";
-        if (code < 400) {
-            if (response != null) {
+        if ((code < 400)&&(response != null)) {
                 content = response.body();
-            }
-        } else {
-            content = "";
         }
         PageEntity newPage = new PageEntity();
         newPage.setCode(code);

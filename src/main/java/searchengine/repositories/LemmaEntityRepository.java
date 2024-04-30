@@ -13,8 +13,8 @@ public interface LemmaEntityRepository extends JpaRepository<LemmaEntity, Intege
      * @param lemma {List<String>} принимает параметр список лемм
      * @return {List<LemmaEntity>} возвращает список лемм по заданным параметрам
      */
-    @Query(value = "SELECT id, site_id, lemma, sum(frequency)  as frequency from lemma where site_id in (:siteId)" +
-            " and lemma in (:lemma) group by lemma order by frequency", nativeQuery = true)
+    @Query(value = "SELECT * from lemma where site_id in (:siteId)" +
+            " and lemma in (:lemma) ", nativeQuery = true)
     List<LemmaEntity> selectLemmaIdBySiteIdAndLemmaOrderByFreq(List<Integer> siteId, List<String> lemma);
 
     /** Выбор лемм по site_id

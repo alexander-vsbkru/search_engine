@@ -126,25 +126,28 @@ public class SearchServiceImpl implements SearchService {
         List<Integer> sites = new ArrayList<>();
         List<List<String>> lemmas = new ArrayList<>(lemmaList.keySet());
         List<List<LemmaEntity>> response = new ArrayList<>();
+
         for (SiteEntity siteEntity : siteEntityList) {
             sites.add(siteEntity.getId());
         }
+
         for (List<String> lemma : lemmas){
             response.add(lemmaEntityRepository.selectLemmaIdBySiteIdAndLemmaOrderByFreq(sites, lemma));
         }
+
         return response;
     }
 
     /** Получение отсортированной Map с результатами поиска страниц
-     * @param sortedLemmaList {List<LemmaEntity>} Принимает параметр отсортированный список лем
+     * @param lemmaList {List<LemmaEntity>} Принимает параметр список лем
      * @return {TreeSet<Map.Entry<PageEntity, Float>>} Возвращает TreeSet<Map.Entry<PageEntity, Float>>
           список страниц
      */
-    private Map<PageEntity, Float> getSortPageMap(List<List<LemmaEntity>> sortedLemmaList) {
+    private Map<PageEntity, Float> getSortPageMap(List<List<LemmaEntity>> lemmaList) {
         Map<PageEntity, Float> pageEntityMap = new HashMap<>();
-        List<String> lemma = getLemmasFromLemmaEntityList(sortedLemmaList.get(0));
+        List<Integer> lemmaIds = getLemmasFromLemmaEntityList(lemmaList.get(0));
         List<PageEntity> pageEntityList = new ArrayList<>();
-        List<IndexEntity> indexEntityList = indexEntityRepository.selectIndexIdByLemmaId(lemmaEntityRepository.selectLemmaIdByLemma(lemma));
+        List<IndexEntity> indexEntityList = indexEntityRepository.selectIndexIdByLemmaId(lemmaIds);
         for (IndexEntity indexEntity : indexEntityList) {
             if (!pageEntityList.contains(indexEntity.getPage())) {
                 pageEntityList.add(indexEntity.getPage());
@@ -152,9 +155,9 @@ public class SearchServiceImpl implements SearchService {
         }
         for (PageEntity pageEntity : pageEntityList) {
             float rank = 0;
-            for (List<LemmaEntity> lemmaEntityList : sortedLemmaList) {
+            for (List<LemmaEntity> lemmaEntityList : lemmaList) {
                 List<IndexEntity> indexList = indexEntityRepository.selectIndexIdByPageIdAndLemmaId(pageEntity.getId(),
-                        lemmaEntityRepository.selectLemmaIdByLemma(getLemmasFromLemmaEntityList(lemmaEntityList)));
+                        getLemmasFromLemmaEntityList(lemmaEntityList));
                 rank = rank + indexList.get(0).getRank();
             }
             pageEntityMap.put(pageEntity, rank);
@@ -166,7 +169,7 @@ public class SearchServiceImpl implements SearchService {
 
     public static Map<PageEntity, Float> sortByValues(Map<PageEntity, Float> map) {
         List<Map.Entry<PageEntity, Float>> entryList = new LinkedList<>(map.entrySet());
-        entryList.sort(Map.Entry.comparingByValue());
+        entryList.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
         Map<PageEntity, Float> sortedMap = new LinkedHashMap<>();
         for (Map.Entry<PageEntity, Float> entry : entryList) {
             sortedMap.put(entry.getKey(), entry.getValue());
@@ -178,10 +181,10 @@ public class SearchServiceImpl implements SearchService {
      * @param lemmaEntityList {List<LemmaEntity>}  получает параметр список LemmaEntity
      * @return {List<String>} возвращает список лемм
      */
-    private List<String> getLemmasFromLemmaEntityList(List<LemmaEntity> lemmaEntityList) {
-        List<String> lemmas = new ArrayList<>();
+    private List<Integer> getLemmasFromLemmaEntityList(List<LemmaEntity> lemmaEntityList) {
+        List<Integer> lemmas = new ArrayList<>();
         for (LemmaEntity lemmaEntity : lemmaEntityList) {
-            lemmas.add(lemmaEntity.getLemma());
+            lemmas.add(lemmaEntity.getId());
         }
         return lemmas;
     }
